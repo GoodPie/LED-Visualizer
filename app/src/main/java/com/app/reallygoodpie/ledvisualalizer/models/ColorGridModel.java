@@ -105,14 +105,20 @@ public class ColorGridModel {
 
     public int getPositionOnDevice(int index)
     {
-        int row = index / ROWS;
+        int newIndex;
+        int row = (index / ROWS) + 1;
         int column = index % COLUMNS;
-        if  (row  % 2 == 0)
+
+        if (row % 2 == 0)
         {
-            column = (COLUMNS - column) - 1;
+            newIndex = row * 16 - column;
+        }
+        else
+        {
+            newIndex = row * 16 - (16 - column);
         }
 
-        return row + column;
+        return newIndex;
     }
 
     public void setColor(@ColorInt int color, int index)

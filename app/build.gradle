@@ -3,9 +3,9 @@ apply plugin: 'com.android.application'
 android {
     signingConfigs {
         debug {
-            keyAlias 'AndroidDebugKey'
+            keyAlias 'debug'
             keyPassword 'password'
-            storeFile file('C:/Users/brand/.android/debug.keystore2')
+            storeFile file('/home/brandyn/Android/debug.keystore2.jks')
             storePassword 'password'
         }
     }
