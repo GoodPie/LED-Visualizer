@@ -4,10 +4,12 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -15,6 +17,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.Toast;
 
@@ -41,6 +44,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     // Fill flag is used as a substitute for LED index
     private static final String FILL_FLAG = "000";
     private static final String TIME_FLAG = "257";
+    private static final String ALARM_FLAG = "258";
+    private static final String TEMP_FLAG = "259";
+    private static final String ANIM_FLAG = "300";
 
     // Information
     private ColorGridModel currentGrid;
@@ -49,7 +55,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     // UI Elements
     private GridView gridView;
     private CheckBox brushChecKBox;
-    private Button colorSelectButton, connectButton, fillButton, timeButton;
+    private Button colorSelectButton, connectButton, fillButton, timeButton, tempButton, alarmButton, animButton;
     private ColorPicker mColorPicker;
 
     private Context mContext;
@@ -91,6 +97,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         timeButton = (Button) findViewById(R.id.time_button);
         timeButton.setOnClickListener(this);
+
+        alarmButton = (Button) findViewById(R.id.alarm_button);
+        alarmButton.setOnClickListener(this);
+
+        tempButton = (Button) findViewById(R.id.temp_button);
+        tempButton.setOnClickListener(this);
+
+        animButton = (Button) findViewById(R.id.animation_button);
+        animButton.setOnClickListener(this);
 
         // Set the default color to green
         currentGlobalColor = ContextCompat.getColor(mContext, R.color.md_green_500);
@@ -148,6 +163,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     }
                 });
                 break;
+            case R.id.alarm_button:
+                alarmClick();
+                break;
+            case R.id.temp_button:
+                tempClick();
+                break;
+            case R.id.animation_button:
+                animClick();
+                break;
             // Fill the grid with one color
             case R.id.fill_button:
                 fillGrid();
@@ -162,6 +186,67 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    private void alarmClick()
+    {
+        View numberPickerView = getLayoutInflater().inflate(R.layout.number_picker_view, null);
+        final EditText numEt = (EditText) numberPickerView.findViewById(R.id.alarmEditText);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setTitle("Set Alarm Time")
+                .setView(numberPickerView)
+                .setPositiveButton("Set Alarm",
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                int alarmValue = Integer.parseInt(numEt.getText().toString());
+                                if (mDataThread != null)
+                                {
+                                    mDataThread.write((ALARM_FLAG
+                                        + ColorGridModel.checkValidDeviceString(alarmValue) +
+                                    "000000").getBytes());
+                                }
+                                else
+                                {
+                                    Toast.makeText(mContext, "Bluetooth connection not established!",
+                                            Toast.LENGTH_SHORT).show();
+                                }
+                            }
+                        })
+                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                });
+
+        builder.show();
+    }
+
+    private void tempClick()
+    {
+        if (mDataThread != null)
+        {
+            mDataThread.write((TEMP_FLAG + "000000000").getBytes());
+        }
+        else
+        {
+            Toast.makeText(mContext, "Bluetooth connection not established!",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void animClick()
+    {
+        if (mDataThread != null)
+        {
+            mDataThread.write((ANIM_FLAG + "000000000").getBytes());
+        }
+        else
+        {
+            Toast.makeText(mContext, "Bluetooth connection not established!",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void displayTime() {
         if (mDataThread != null) {
 
@@ -172,6 +257,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             String localTime = "" + hours + "" + minutes + "" + seconds;
             mDataThread.write((TIME_FLAG + localTime + "000").getBytes());
+        }
+        else
+        {
+            Toast.makeText(mContext, "Bluetooth connection not established!",
+                    Toast.LENGTH_SHORT).show();
         }
     }
 
