@@ -5,7 +5,7 @@ android {
         debug {
             keyAlias 'debug'
             keyPassword 'password'
-            storeFile file('/home/brandyn/Android/debug.keystore2.jks')
+            storeFile file('C:/Users/debug.keystore.jks')
             storePassword 'password'
         }
     }
@@ -34,5 +34,6 @@ dependencies {
     })
     compile 'com.android.support:appcompat-v7:25.1.1'
     compile 'com.pes.materialcolorpicker:library:1.0.2'
+    compile 'com.android.support:support-v4:25.3.1'
     testCompile 'junit:junit:4.12'
 }

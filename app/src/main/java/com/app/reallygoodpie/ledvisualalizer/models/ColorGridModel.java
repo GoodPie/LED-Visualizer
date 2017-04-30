@@ -111,14 +111,14 @@ public class ColorGridModel {
 
         if (row % 2 == 0)
         {
-            newIndex = row * 16 - column;
+            newIndex = (row * 16) - column-1;
         }
         else
         {
             newIndex = row * 16 - (16 - column);
         }
 
-        return newIndex;
+        return newIndex+1;
     }
 
     public void setColor(@ColorInt int color, int index)

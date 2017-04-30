@@ -5,7 +5,6 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.content.ContextCompat;
@@ -26,7 +25,11 @@ import com.pes.androidmaterialcolorpickerdialog.ColorPicker;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
@@ -37,6 +40,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     // Fill flag is used as a substitute for LED index
     private static final String FILL_FLAG = "000";
+    private static final String TIME_FLAG = "257";
 
     // Information
     private ColorGridModel currentGrid;
@@ -45,7 +49,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     // UI Elements
     private GridView gridView;
     private CheckBox brushChecKBox;
-    private Button colorSelectButton, connectButton, fillButton;
+    private Button colorSelectButton, connectButton, fillButton, timeButton;
     private ColorPicker mColorPicker;
 
     private Context mContext;
@@ -84,6 +88,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         connectButton = (Button) findViewById(R.id.connect_button);
         connectButton.setOnClickListener(this);
+
+        timeButton = (Button) findViewById(R.id.time_button);
+        timeButton.setOnClickListener(this);
 
         // Set the default color to green
         currentGlobalColor = ContextCompat.getColor(mContext, R.color.md_green_500);
@@ -149,6 +156,22 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Log.i(TAG, "Attempting to make connection to bluetooth...");
                 connectBluetooth();
                 break;
+            case R.id.time_button:
+                displayTime();
+                break;
+        }
+    }
+
+    private void displayTime() {
+        if (mDataThread != null) {
+
+            Calendar calendar = Calendar.getInstance();
+            int hours = calendar.get(Calendar.HOUR_OF_DAY);
+            int minutes = calendar.get(Calendar.MINUTE);
+            int seconds = calendar.get(Calendar.SECOND);
+
+            String localTime = "" + hours + "" + minutes + "" + seconds;
+            mDataThread.write((TIME_FLAG + localTime + "000").getBytes());
         }
     }
 
