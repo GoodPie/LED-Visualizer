@@ -16,7 +16,6 @@ import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.SeekBar;
@@ -29,11 +28,8 @@ import com.pes.androidmaterialcolorpickerdialog.ColorPicker;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
@@ -41,6 +37,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public static final String TAG = "MainActivity";
     public static final String APP_NAME = "com.brandyn.LEDVisualizer";
     private static final UUID MY_UUID = java.util.UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+
+    private static final int TIMER_DELAY = 1000;
 
     // Fill flag is used as a substitute for LED index
     private static final String FILL_FLAG = "000";
@@ -70,6 +68,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private DataThread mDataThread;
     private ConnectThread mConnectThread;
 
+    private boolean timerIsActive;
+
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -79,9 +79,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mDataThread = null;
         mContext = getApplicationContext();
 
-        brightness = 100;
-
         mColorPicker = new ColorPicker(MainActivity.this, 33, 159, 243);
+
+        // init basic values
+        brightness = 100;
+        timerIsActive = false;
 
         // Initialize the grid
         currentGrid = new ColorGridModel();
@@ -93,6 +95,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // Set onclick listeners for buttons
         initializeButtons();
 
+        // Set on click listener for brightness bar
         brightnessBar = (SeekBar) findViewById(R.id.brightnessBar);
         brightnessBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -120,33 +123,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, final int i, long l) {
-                Log.i(TAG, "Grid view clicked at position " + i);
 
                 // Painting so change the clicked grid element to the current color without
                 // bringing up the color picker
                 updateGridElement(i);
-
             }
         });
     }
 
-    private void sendBrightness() {
-
-        Log.i(TAG, "brightness: " + brightness);
-        if (mDataThread != null)
-        {
-            mDataThread.write((ALARM_FLAG
-                    + ColorGridModel.checkValidDeviceString(brightness) +
-                    "000000").getBytes());
-        }
-        else
-        {
-            Toast.makeText(mContext, "Bluetooth connection not established!",
-                    Toast.LENGTH_SHORT).show();
-        }
-
-    }
-
+    /**
+     * Initialize on click listeners for buttons
+     */
     private void initializeButtons() {
         colorSelectButton = (Button) findViewById(R.id.brush_color_button);
         colorSelectButton.setOnClickListener(this);
@@ -170,6 +157,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         animButton.setOnClickListener(this);
     }
 
+    /**
+     * Toggle all buttons besides the time button
+     * @param toggle    true to enable, false to disable
+     */
+    private void toggleButtons(boolean toggle) {
+
+        colorSelectButton.setEnabled(toggle);
+        fillButton.setEnabled(toggle);
+        alarmButton.setEnabled(toggle);
+        tempButton.setEnabled(toggle);
+        animButton.setEnabled(toggle);
+    }
+
     @Override
     public void onClick(View view) {
         int viewId = view.getId();
@@ -178,7 +178,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         {
             // Allow the user to select another color for the global color
             case R.id.brush_color_button:
+                timerIsActive = false;
                 mColorPicker.show();
+
                 Button okColorSelection = (Button) mColorPicker.findViewById(R.id.okColorButton);
                 okColorSelection.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -188,12 +190,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     }
                 });
                 break;
+            // Start alarm process
             case R.id.alarm_button:
                 alarmClick();
                 break;
+            // Start temperature process
             case R.id.temp_button:
                 tempClick();
                 break;
+            // Start animation process
             case R.id.animation_button:
                 animClick();
                 break;
@@ -201,16 +206,37 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             case R.id.fill_button:
                 fillGrid();
                 break;
+            // Connect to bt device
             case R.id.connect_button:
-                Log.i(TAG, "Attempting to make connection to bluetooth...");
                 connectBluetooth();
                 break;
+            // Start time process
             case R.id.time_button:
-                displayTime();
+                setupTimer();
                 break;
         }
     }
 
+    /**
+     * Sends brightness flag and new brightness level (0 - 255) to device
+     */
+    private void sendBrightness() {
+
+        if (mDataThread != null)
+        {
+            mDataThread.write((BRIGHTNESS_FLAG
+                    + ColorGridModel.checkValidDeviceString(brightness)).getBytes());
+        }
+        else
+        {
+            Toast.makeText(mContext, "Bluetooth connection not established!",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Show number input to send a time to the device to being the alarm process
+     */
     private void alarmClick()
     {
         View numberPickerView = getLayoutInflater().inflate(R.layout.number_picker_view, null);
@@ -222,20 +248,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                int alarmValue = Integer.parseInt(numEt.getText().toString());
-                                if (mDataThread != null)
-                                {
-                                    mDataThread.write((ALARM_FLAG
-                                        + ColorGridModel.checkValidDeviceString(alarmValue) +
-                                    "000000").getBytes());
-                                }
-                                else
-                                {
-                                    Toast.makeText(mContext, "Bluetooth connection not established!",
-                                            Toast.LENGTH_SHORT).show();
-                                }
-                            }
-                        })
+                    try {
+                        int alarmValue = Integer.parseInt(numEt.getText().toString());
+                        // Ensure that the data thread has been established so we don't
+                        // send to null device
+                        if (mDataThread != null) {
+                            // Send alarm flag and the alarm value to device
+                            mDataThread.write((ALARM_FLAG
+                                    + ColorGridModel.checkValidDeviceString(alarmValue)
+                            ).getBytes());
+                        } else {
+                            // Let the user know they haven't connected to bluetooth device yet
+                            Toast.makeText(mContext, "Bluetooth connection not established!",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    } catch (NumberFormatException e) {
+                        Log.i(TAG, "Invalid alarm input", e);
+                    }
+
+                    }
+                })
                 .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -246,47 +278,98 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         builder.show();
     }
 
+    /**
+     * Send flag to notify the device that it should start temperature process
+     */
     private void tempClick()
     {
+        // Ensure that the data thread has been established so we don't send to null device
         if (mDataThread != null)
         {
-            mDataThread.write((TEMP_FLAG + "000000000").getBytes());
+            // Send flag to start temp process
+            mDataThread.write((TEMP_FLAG).getBytes());
         }
         else
         {
+            // Let the user know they haven't connected to bluetooth device yet
             Toast.makeText(mContext, "Bluetooth connection not established!",
                     Toast.LENGTH_SHORT).show();
         }
     }
 
+    /**
+     * Send flag to notify the device that it should start animation process
+     */
     private void animClick()
     {
+        // Ensure that the data thread has been established so we don't send to null device
         if (mDataThread != null)
         {
-            mDataThread.write((ANIM_FLAG + "000000000").getBytes());
+            // Send flag to start animation
+            mDataThread.write((ANIM_FLAG).getBytes());
         }
         else
         {
+            // Let the user know they haven't connected to bluetooth device yet
             Toast.makeText(mContext, "Bluetooth connection not established!",
                     Toast.LENGTH_SHORT).show();
         }
     }
 
-    private void displayTime() {
-        if (mDataThread != null) {
 
-            Calendar calendar = Calendar.getInstance();
-            int hours = calendar.get(Calendar.HOUR_OF_DAY);
-            int minutes = calendar.get(Calendar.MINUTE);
-            int seconds = calendar.get(Calendar.SECOND);
+    /**
+     * Depending on whether the timer is active, toggle all other buttons and start the timer
+     * handler event to transmit time every 1000ms
+     */
+    private void setupTimer() {
 
-            String localTime = "" + hours + "" + minutes + "" + seconds;
-            mDataThread.write((TIME_FLAG + localTime + "000").getBytes());
-        }
-        else
+        if (timerIsActive)
         {
-            Toast.makeText(mContext, "Bluetooth connection not established!",
-                    Toast.LENGTH_SHORT).show();
+            timerIsActive = false;
+            toggleButtons(true);
+        }
+        else {
+            timerIsActive = true;
+            toggleButtons(false);
+            displayTimeHandler();
+        }
+    }
+
+    /**
+     * Sends out the system time every TIMER_DELAY ms
+     */
+    private void displayTimeHandler()
+    {
+        // Ensure the time is still active to prevent interruptions if timer has been disabled
+        if (timerIsActive)
+        {
+            Handler h = new Handler();
+            h.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+
+                // Ensure that the data thread has been established first so we don't try to
+                // send infromation to null
+                if (mDataThread != null) {
+                    Calendar calendar = Calendar.getInstance();
+                    int hours = calendar.get(Calendar.HOUR_OF_DAY);
+                    int minutes = calendar.get(Calendar.MINUTE);
+                    int seconds = calendar.get(Calendar.SECOND);
+
+                    // Convert to valid timer and send to data thread
+                    String localTime = "" + hours + "" + minutes + "" + seconds;
+                    mDataThread.write((TIME_FLAG + localTime).getBytes());
+
+                } else {
+                    // Let the user know they haven't yet established a bt connection
+                    Toast.makeText(mContext, "Bluetooth connection not established!",
+                            Toast.LENGTH_SHORT).show();
+                }
+
+                // Call the event again after the process has finished
+                displayTimeHandler();
+                }
+            }, TIMER_DELAY);
         }
     }
 
