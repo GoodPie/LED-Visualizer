@@ -50,12 +50,15 @@
                 android:gravity="center"
                 android:orientation="horizontal">
 
-                <CheckBox
-                    android:id="@+id/brush_checkbox"
+
+                <SeekBar
+                    android:id="@+id/brightnessBar"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/enable_brush" />
-
+                    android:layout_weight="1"
+                    android:max="255"
+                    android:progress="100"
+                    android:thumb="@drawable/blue_thumb_default" />
             </LinearLayout>
 
             <LinearLayout

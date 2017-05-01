@@ -19,6 +19,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.GridView;
+import android.widget.SeekBar;
 import android.widget.Toast;
 
 import com.app.reallygoodpie.ledvisualalizer.adapters.ColorGridAdapter;
@@ -47,14 +48,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final String ALARM_FLAG = "258";
     private static final String TEMP_FLAG = "259";
     private static final String ANIM_FLAG = "300";
+    private static final String BRIGHTNESS_FLAG = "301";
 
     // Information
     private ColorGridModel currentGrid;
     private int currentGlobalColor;
 
+    private int brightness;
+
     // UI Elements
     private GridView gridView;
-    private CheckBox brushChecKBox;
+    private SeekBar brightnessBar;
     private Button colorSelectButton, connectButton, fillButton, timeButton, tempButton, alarmButton, animButton;
     private ColorPicker mColorPicker;
 
@@ -75,6 +79,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mDataThread = null;
         mContext = getApplicationContext();
 
+        brightness = 100;
+
         mColorPicker = new ColorPicker(MainActivity.this, 33, 159, 243);
 
         // Initialize the grid
@@ -83,9 +89,65 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         // Get UI elements
         gridView = (GridView) findViewById(R.id.color_gridview);
-        brushChecKBox = (CheckBox) findViewById(R.id.brush_checkbox);
-        brushChecKBox.setChecked(true);
 
+        // Set onclick listeners for buttons
+        initializeButtons();
+
+        brightnessBar = (SeekBar) findViewById(R.id.brightnessBar);
+        brightnessBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                brightness = progress;
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                sendBrightness();
+            }
+        });
+
+        // Set the default color to green
+        currentGlobalColor = ContextCompat.getColor(mContext, R.color.md_green_500);
+
+        // Initialize the grid
+        mAdapter = new ColorGridAdapter(getApplicationContext(), currentGrid);
+        gridView.setAdapter(mAdapter);
+        gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, final int i, long l) {
+                Log.i(TAG, "Grid view clicked at position " + i);
+
+                // Painting so change the clicked grid element to the current color without
+                // bringing up the color picker
+                updateGridElement(i);
+
+            }
+        });
+    }
+
+    private void sendBrightness() {
+
+        Log.i(TAG, "brightness: " + brightness);
+        if (mDataThread != null)
+        {
+            mDataThread.write((ALARM_FLAG
+                    + ColorGridModel.checkValidDeviceString(brightness) +
+                    "000000").getBytes());
+        }
+        else
+        {
+            Toast.makeText(mContext, "Bluetooth connection not established!",
+                    Toast.LENGTH_SHORT).show();
+        }
+
+    }
+
+    private void initializeButtons() {
         colorSelectButton = (Button) findViewById(R.id.brush_color_button);
         colorSelectButton.setOnClickListener(this);
 
@@ -106,43 +168,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         animButton = (Button) findViewById(R.id.animation_button);
         animButton.setOnClickListener(this);
-
-        // Set the default color to green
-        currentGlobalColor = ContextCompat.getColor(mContext, R.color.md_green_500);
-
-        // Initialize the grid
-        mAdapter = new ColorGridAdapter(getApplicationContext(), currentGrid);
-        gridView.setAdapter(mAdapter);
-        gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, final int i, long l) {
-                Log.i(TAG, "Grid view clicked at position " + i);
-
-                // Check if painting
-                boolean isPainting = brushChecKBox.isChecked();
-
-                if (!isPainting) {
-                    // Not painting so bring up color picker dialog for each block selected and
-                    // change the color to the selected
-                    mColorPicker.show();
-                    Button okColorSelection = (Button) mColorPicker.findViewById(R.id.okColorButton);
-                    okColorSelection.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            currentGlobalColor = mColorPicker.getColor();
-                            updateGridElement(i);
-                            mColorPicker.dismiss();
-                        }
-                    });
-                }
-                else
-                {
-                    // Painting so change the clicked grid element to the current color without
-                    // bringing up the color picker
-                    updateGridElement(i);
-                }
-            }
-        });
     }
 
     @Override
